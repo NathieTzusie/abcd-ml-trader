@@ -1,0 +1,37 @@
+config_path: /mnt/c/Users/12645/abcd-ml-trader/config/sss_v4_ml.yaml
+created_at: '2026-06-12T11:55:22'
+input_files:
+- ../abcd-ml-trader/outputs/sss_input_v4_ml.csv
+outputs:
+  enable_scores: enable_score.csv
+  monte_carlo_results: monte_carlo_results.csv
+  performance_matrix: performance_matrix.csv
+  recommendations_csv: recommendations.csv
+  recommendations_md: recommendations.md
+  summary_report: summary_report.md
+report_dir: ../abcd-ml-trader/outputs/sss/2026-06-12/ADA+ATOM+AVAX+BNB+BTC+DOGE+DOT+ETC+ETH+FIL+LINK+LTC+NEAR+SOL+UNI+XRP__abc__4a004c
+row_counts:
+  enable_scores: 16
+  performance_matrix: 16
+  trades: 77590
+run_mode: timestamped
+schema_version: 1
+sss_version: v1.1
+strategies:
+- ABCD_V4_ML_ADAUSDT_15m
+- ABCD_V4_ML_ATOMUSDT_15m
+- ABCD_V4_ML_AVAXUSDT_15m
+- ABCD_V4_ML_BNBUSDT_15m
+- ABCD_V4_ML_BTCUSDT_15m
+- ABCD_V4_ML_DOGEUSDT_15m
+- ABCD_V4_ML_DOTUSDT_15m
+- ABCD_V4_ML_ETCUSDT_15m
+- ABCD_V4_ML_ETHUSDT_15m
+- ABCD_V4_ML_FILUSDT_15m
+- ABCD_V4_ML_LINKUSDT_15m
+- ABCD_V4_ML_LTCUSDT_15m
+- ABCD_V4_ML_NEARUSDT_15m
+- ABCD_V4_ML_SOLUSDT_15m
+- ABCD_V4_ML_UNIUSDT_15m
+- ABCD_V4_ML_XRPUSDT_15m
+symbol: ADA+ATOM+AVAX+BNB+BTC+DOGE+DOT+ETC+ETH+FIL+LINK+LTC+NEAR+SOL+UNI+XRP

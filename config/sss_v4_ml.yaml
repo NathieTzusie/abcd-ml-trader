@@ -1,0 +1,35 @@
+# SSS 简化配置 — ABCD V4+ML
+input_path:
+  - "../abcd-ml-trader/outputs/sss_input_v4_ml.csv"
+
+output_dir: "../abcd-ml-trader/outputs/sss"
+report_output:
+  run_name: "abcd_v4_ml"
+  overwrite: true
+  run_mode: "structured"
+
+scoring:
+  classification:
+    mc_trials: 1000
+    mc_confidence: 0.95
+    min_trade_count: 20
+
+label_enrichment:
+  enabled: false
+
+performance_matrix:
+  group_by:
+    - strategy_name
+    - symbol
+  metrics:
+    - win_rate
+    - avg_R
+    - total_R
+    - profit_factor
+    - trade_count
+
+recommendations:
+  enabled: true
+  min_trade_count: 20
+  critical_wr_threshold: 40.0
+  warning_wr_threshold: 50.0
