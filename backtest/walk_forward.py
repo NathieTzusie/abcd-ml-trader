@@ -325,11 +325,6 @@ class WalkForwardEngine:
                 if shape.trade_entered:
                     continue
                 if shape.first_in_zone_bar is not None:
-                    # 4-swing ABCD：D 刚确认，等下一 bar 入场
-                    is_4swing = getattr(shape, 'is_4swing', False)
-                    if is_4swing and shape.first_in_zone_bar == i:
-                        continue  # 等下一 bar
-                    
                     if self.use_confluence:
                         if not self._check_confluence(
                             shape, all_swings, high, low, close, volume, i
@@ -337,7 +332,7 @@ class WalkForwardEngine:
                             shape.trade_entered = True
                             continue
                     
-                    trade = self._enter_trade(shape, i, atr, close, df, use_next_open=is_4swing)
+                    trade = self._enter_trade(shape, i, atr, close, df)
                     if trade is not None:
                         active_trades.append(trade)
                         shape.trade_entered = True
@@ -467,44 +462,40 @@ class WalkForwardEngine:
         return shapes
 
     def _try_detect_shape(self, swings, current_bar, atr, symbol, timeframe):
-        """
-        4-swing ABCD 检测（参考 v1.5）：D 是 ZigZag 确认的真实 swing
-        CD 腿 = 0.90-1.10 × AB，进场 = D 确认后下一 bar open
-        """
-        if len(swings) < 4:
+        """检查最新 3 个摆动点是否构成有效 ABC → 投影 D"""
+        if len(swings) < 3:
             return None
 
-        a = swings[-4]; b = swings[-3]; c = swings[-2]; d = swings[-1]
+        c = swings[-1]
+        b = swings[-2]
+        a = swings[-3]
 
-        # 验证 4 点交替: high→low→high→low (bullish) or low→high→low→high (bearish)
-        if a[2] == "high" and b[2] == "low" and c[2] == "high" and d[2] == "low":
-            if not (c[1] < a[1] and d[1] < b[1]):
+        if a[2] == "high":
+            if not (b[2] == "low" and c[2] == "high" and c[1] < a[1]):
                 return None
             direction = "bullish"
-        elif a[2] == "low" and b[2] == "high" and c[2] == "low" and d[2] == "high":
-            if not (c[1] > a[1] and d[1] > b[1]):
+        else:
+            if not (b[2] == "high" and c[2] == "low" and c[1] > a[1]):
                 return None
             direction = "bearish"
-        else:
-            return None
 
         ab_len = abs(a[1] - b[1])
         bc_len = abs(b[1] - c[1])
-        cd_len = abs(c[1] - d[1])
         if ab_len == 0:
             return None
 
         bc_ab = bc_len / ab_len
-        cd_ab = cd_len / ab_len
-
         if not (self.bc_ab_min <= bc_ab <= self.bc_ab_max):
-            return None
-        if not (0.90 <= cd_ab <= 1.10):  # CD ≈ AB
             return None
 
         b_atr = atr[min(b[0], len(atr) - 1)]
         if ab_len < self.min_atr_mult * b_atr:
             return None
+
+        if direction == "bullish":
+            d_proj = c[1] - ab_len * self.cd_ab_ratio
+        else:
+            d_proj = c[1] + ab_len * self.cd_ab_ratio
 
         ab_bars = abs(b[0] - a[0])
         bc_bars = abs(c[0] - b[0])
@@ -512,41 +503,25 @@ class WalkForwardEngine:
         if quality < self.min_quality_score:
             return None
 
-        # TP1 距离：|C - D| / D
-        tp1_dist = abs(c[1] - d[1])
-        tp1_pct = tp1_dist / d[1] if d[1] > 0 else 0
-        if self.min_tp1_pct > 0 and tp1_pct < self.min_tp1_pct:
-            return None
-        if self.max_tp1_pct < 1.0 and tp1_pct > self.max_tp1_pct:
-            return None
-
-        # ADX
-        adx_i = 0
-        if self.max_adx > 0 and adx_i > self.max_adx:
-            return None
-
-        d_proj = d[1]
         d_lower = d_proj * (1 - self.d_zone_tolerance)
         d_upper = d_proj * (1 + self.d_zone_tolerance)
 
         self._shape_counter += 1
 
-        shape = ActiveShape(
-            shape_id=f"{symbol}_{timeframe}_ABCD_{direction}_{self._shape_counter}",
+        return ActiveShape(
+            shape_id=f"{symbol}_{timeframe}_{direction}_{self._shape_counter}",
             direction=direction,
             a_price=a[1], b_price=b[1], c_price=c[1],
             d_projected=d_proj,
             bc_ab_ratio=round(bc_ab, 4),
-            cd_ab_ratio=round(cd_ab, 4),
             quality_score=round(quality, 1),
             ab_bars=ab_bars, bc_bars=bc_bars,
-            cd_bars_estimated=abs(d[0] - c[0]),
+            cd_bars_estimated=int(ab_bars * self.cd_ab_ratio),
             a_idx=a[0], b_idx=b[0], c_idx=c[0],
-            d_lower=d_lower, d_upper=d_upper,
             c_bar=current_bar,
-            first_in_zone_bar=current_bar,  # D 已确认 → 标记已入 zone
+            d_lower=d_lower, d_upper=d_upper,
         )
-        shape.is_4swing = True
+
 
     def _validate_shape(self, shape, adx_at_entry: float = 0) -> bool:
         """额外的形态验证（TP1距离, ADX等）"""
@@ -610,11 +585,9 @@ class WalkForwardEngine:
     # ================================================================
     # 入场
     # ================================================================
-    def _enter_trade(self, shape, current_bar, atr, close, df, use_next_open=False):
+    def _enter_trade(self, shape, current_bar, atr, close, df):
         entry_price = shape.d_projected
-        if use_next_open:
-            entry_price = df["open"].iloc[min(current_bar + 1, len(df) - 1)]
-        entry_bar = current_bar + 1 if use_next_open else current_bar
+        entry_bar = current_bar
         entry_atr = atr[min(entry_bar, len(atr) - 1)]
 
         if shape.direction == "bullish":
