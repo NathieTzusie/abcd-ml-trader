@@ -1,0 +1,49 @@
+# abcd-ml-trader 默认配置
+# 日期: 2026-06-11
+
+data:
+  source_dir: "/mnt/c/Users/12645/Sisie-Quantive/data"
+  symbols: ["BTCUSDT", "ETHUSDT"]
+  timeframes: ["15m", "30m", "1h", "4h"]
+  date_start: "2024-01-01"
+  date_end: null  # null = 到最新
+
+abcd:
+  zigzag:
+    atr_period: 14
+    atr_mult: 0.5  # 回撤需超过 0.5×ATR 才算转折
+  fib:
+    bc_ab_min: 0.382
+    bc_ab_max: 0.886
+    cd_ab_min: 0.9
+    cd_ab_max: 1.1
+    standard_levels: [0.382, 0.5, 0.618, 0.786, 0.886]
+  quality:
+    fib_precision_weight: 45
+    time_symmetry_weight: 25
+    price_symmetry_weight: 20
+    leg_maturity_weight: 10
+    min_score: 40
+  d_zone:
+    tolerance_pct: 0.005  # D 投影 ±0.5% 为 D_zone
+
+exit:
+  tp1_pct: 0.5      # 50% 仓位取 TP1(C)
+  tp2_pct: 0.5       # 剩余 50% 取 TP2(A)
+  timeout_mult: 2.0  # |A-D| bars × 2
+  sl_buffer_atr: 0.3 # SL 在 D_zone 外额外 ATR 缓冲
+
+ml:
+  btc_weight: 3.0  # BTC 样本权重相对 ETH
+  walk_forward_folds: 5
+  test_size_pct: 0.2
+  xgboost:
+    n_estimators: 200
+    max_depth: 6
+    learning_rate: 0.05
+    subsample: 0.8
+    colsample_bytree: 0.8
+    random_state: 42
+  threshold:
+    min_precision: 0.55  # 最低精确率
+    max_trade_reduction: 0.50  # 最多减少50%交易量
